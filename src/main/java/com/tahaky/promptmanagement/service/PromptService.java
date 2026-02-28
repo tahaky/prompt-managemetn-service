@@ -31,6 +31,14 @@ public class PromptService {
             throw new PromptAlreadyExistsException("Prompt with name '" + request.getName() + "' already exists");
         }
 
+        // If new prompt is active, deactivate any currently active prompt
+        if (Boolean.TRUE.equals(request.getActive())) {
+            promptRepository.findFirstByActive(true).ifPresent(existing -> {
+                existing.setActive(false);
+                promptRepository.save(existing);
+            });
+        }
+
         Prompt prompt = Prompt.builder()
                 .name(request.getName())
                 .content(request.getContent())
@@ -56,12 +64,24 @@ public class PromptService {
         existingPrompt.setActive(false);
         promptRepository.save(existingPrompt);
 
+        boolean newVersionActive = request.getActive() != null ? request.getActive() : true;
+
+        // If new version will be active, deactivate any other currently active prompt
+        if (newVersionActive) {
+            promptRepository.findFirstByActive(true).ifPresent(other -> {
+                if (!other.getId().equals(existingPrompt.getId())) {
+                    other.setActive(false);
+                    promptRepository.save(other);
+                }
+            });
+        }
+
         // Create new version
         Prompt newVersion = Prompt.builder()
                 .name(name)
                 .content(request.getContent())
                 .category(request.getCategory() != null ? request.getCategory() : existingPrompt.getCategory())
-                .active(request.getActive() != null ? request.getActive() : true)
+                .active(newVersionActive)
                 .version(existingPrompt.getVersion() + 1)
                 .build();
 
@@ -141,6 +161,16 @@ public class PromptService {
     public PromptResponse getCurrentPromptForAI(String name) {
         log.info("AI Service fetching current prompt: {}", name);
         return getPromptByName(name);
+    }
+
+    @Transactional(readOnly = true)
+    public PromptResponse getActivePrompt() {
+        log.info("Fetching the single active prompt");
+
+        Prompt prompt = promptRepository.findFirstByActive(true)
+                .orElseThrow(() -> new PromptNotFoundException("No active prompt found"));
+
+        return convertToResponse(prompt);
     }
 
     private PromptResponse convertToResponse(Prompt prompt) {

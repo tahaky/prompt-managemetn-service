@@ -21,4 +21,6 @@ public interface PromptRepository extends JpaRepository<Prompt, Long> {
     List<Prompt> findAllVersionsByName(String name);
 
     Optional<Prompt> findTopByNameOrderByVersionDesc(String name);
+
+    Optional<Prompt> findFirstByActive(Boolean active);
 }
