@@ -21,6 +21,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -159,6 +160,49 @@ class PromptServiceTest {
         assertDoesNotThrow(() -> promptService.deletePrompt("test-prompt"));
 
         verify(promptRepository, times(1)).save(any(Prompt.class));
+    }
+
+    @Test
+    void getActivePrompt_Success() {
+        when(promptRepository.findFirstByActive(true)).thenReturn(Optional.of(testPrompt));
+
+        PromptResponse response = promptService.getActivePrompt();
+
+        assertNotNull(response);
+        assertEquals("test-prompt", response.getName());
+        verify(promptRepository, times(1)).findFirstByActive(true);
+    }
+
+    @Test
+    void getActivePrompt_NotFound() {
+        when(promptRepository.findFirstByActive(true)).thenReturn(Optional.empty());
+
+        assertThrows(PromptNotFoundException.class, () -> {
+            promptService.getActivePrompt();
+        });
+    }
+
+    @Test
+    void createPrompt_DeactivatesPreviousActivePrompt() {
+        Prompt otherActivePrompt = Prompt.builder()
+                .id(99L)
+                .name("other-prompt")
+                .content("Other content")
+                .category("other")
+                .version(1)
+                .active(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        when(promptRepository.findByNameAndActive(anyString(), eq(true))).thenReturn(Optional.empty());
+        when(promptRepository.findFirstByActive(eq(true))).thenReturn(Optional.of(otherActivePrompt));
+        when(promptRepository.save(any(Prompt.class))).thenReturn(testPrompt);
+
+        promptService.createPrompt(testRequest);
+
+        assertFalse(otherActivePrompt.getActive());
+        verify(promptRepository, atLeast(2)).save(any(Prompt.class));
     }
 
     @Test

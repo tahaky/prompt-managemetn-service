@@ -109,6 +109,16 @@ class PromptControllerTest {
     }
 
     @Test
+    void getActivePrompt_Success() throws Exception {
+        when(promptService.getActivePrompt()).thenReturn(testResponse);
+
+        mockMvc.perform(get("/api/prompts/active"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("test-prompt"))
+                .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
     void getAllActivePrompts_Success() throws Exception {
         when(promptService.getAllActivePrompts()).thenReturn(List.of(testResponse));
 

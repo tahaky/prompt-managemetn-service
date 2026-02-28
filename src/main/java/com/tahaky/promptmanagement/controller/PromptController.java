@@ -33,6 +33,12 @@ public class PromptController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<PromptResponse> getActivePrompt() {
+        PromptResponse response = promptService.getActivePrompt();
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{name}")
     public ResponseEntity<PromptResponse> getPromptByName(@PathVariable String name) {
         PromptResponse response = promptService.getPromptByName(name);
